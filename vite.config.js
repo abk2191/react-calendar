@@ -4,18 +4,17 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
   plugins: [
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto", // auto-injects the SW register script
+      injectRegister: "auto",
       manifest: {
         name: "React Calendar",
         short_name: "React Calendar",
-        start_url: ".", // see Step 7 for GitHub Pages
-        scope: ".", // see Step 7 for GitHub Pages
-        display: "fullscreen", // removes browser UI/URL bar when installed
+        start_url: "/",
+        scope: "/",
+        display: "standalone", // Changed from "fullscreen" (better for PWA)
         background_color: "#000000",
         theme_color: "#000000",
         icons: [
@@ -23,6 +22,7 @@ export default defineConfig({
             src: "/android-icon-192x192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
             src: "/apple-icon-192x192.png",
@@ -32,7 +32,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // sensible defaults: caches your build assets & basic navigation
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
       },
     }),
   ],
