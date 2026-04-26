@@ -24,6 +24,11 @@ export default defineConfig({
             sizes: "192x192",
             type: "image/png",
           },
+          {
+            src: "/apple-icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
       },
       workbox: {
