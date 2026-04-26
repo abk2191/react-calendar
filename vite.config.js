@@ -15,7 +15,7 @@ export default defineConfig({
         short_name: "React Calendar",
         start_url: ".", // see Step 7 for GitHub Pages
         scope: ".", // see Step 7 for GitHub Pages
-        display: "standalone", // removes browser UI/URL bar when installed
+        display: "fullscreen", // removes browser UI/URL bar when installed
         background_color: "#000000",
         theme_color: "#000000",
         icons: [
