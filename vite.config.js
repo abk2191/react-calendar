@@ -14,18 +14,12 @@ export default defineConfig({
         short_name: "React Calendar",
         start_url: "/",
         scope: "/",
-        display: "standalone", // Changed from "fullscreen" (better for PWA)
+        display: "fullscreen", // Changed from "fullscreen" (better for PWA)
         background_color: "#000000",
         theme_color: "#000000",
         icons: [
           {
-            src: "/android-icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any maskable",
-          },
-          {
-            src: "/apple-icon-192x192.png",
+            src: "/icons8-calendar-100.png",
             sizes: "192x192",
             type: "image/png",
           },
