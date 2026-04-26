@@ -972,21 +972,6 @@ html.dark-theme {
   margin-top: 8px;
 }
 
-.cls-nt-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: all 0.2s;
-}
-
 .cls-nt-btn:hover {
   background-color: rgba(95, 99, 104, 0.1);
 }
