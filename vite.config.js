@@ -23,9 +23,14 @@ export default defineConfig({
             sizes: "192x192",
             type: "image/png",
           },
+          {
+            src: "/Gemini_Generated_Image_jnf9zxjnf9zxjnf9.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
         ],
       },
     }),
   ],
-  base: "/react-calendar",
+  base: "/react-calendar/",
 });
