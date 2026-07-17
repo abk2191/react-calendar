@@ -1,21 +1,35 @@
 import { useState, useEffect, useRef } from "react";
 import EventEditor from "./EventEditor";
 import LiveClock from "./LiveClock";
-// import notificationService from "./services/notificationService";
-// import {
-//   saveCalendarData,
-//   loadCalendarData,
-//   saveCalendarMoods,
-//   loadCalendarMoods,
-//   saveCalendarDateColors,
-//   loadCalendarDateColors,
-//   saveCalendarReminders,
-//   loadCalendarReminders,
-// } from "./firestore-helpers";
-// import { getMessaging, getToken, onMessage } from "firebase/messaging";
-// import { db, auth } from "./firebase.js";
-// import { doc, setDoc, collection, deleteDoc } from "firebase/firestore";
-// import { query, where, getDocs, updateDoc } from "firebase/firestore";
+
+// Local storage helper functions
+const STORAGE_KEYS = {
+  EVENTS: "calendar_events",
+  MOODS: "calendar_moods",
+  DATE_COLORS: "calendar_date_colors",
+  REMINDERS: "calendar_reminders",
+};
+
+// Helper functions for local storage operations
+const saveToLocalStorage = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    console.log(`✅ Saved ${key} to local storage`, data);
+  } catch (error) {
+    console.error(`❌ Error saving ${key} to local storage:`, error);
+  }
+};
+
+const loadFromLocalStorage = (key) => {
+  try {
+    const data = localStorage.getItem(key);
+    console.log(`📖 Loading ${key} from local storage:`, data);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error(`❌ Error loading ${key} from local storage:`, error);
+    return null;
+  }
+};
 
 function useDarkTheme() {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
@@ -48,12 +62,11 @@ function useDarkTheme() {
 }
 
 function Calendar() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [fcmToken, setFcmToken] = useState(null);
   const [notificationPermission, setNotificationPermission] = useState(false);
 
-  // All states initialized as empty - will be populated by Firestore
+  // All states initialized with data from local storage
   const [event, setEvent] = useState([]);
   const [currentView, setCurrentView] = useState("month");
   const [moods, setMoods] = useState([]);
@@ -72,532 +85,417 @@ function Calendar() {
   // Track if data has been loaded to prevent overwriting
   const hasLoadedRef = useRef(false);
 
-  // VAPID Key - REPLACE THIS WITH YOUR ACTUAL KEY FROM FIREBASE CONSOLE
-  const VAPID_KEY =
-    "BJX394ZmLSR1x0DOBgEUdQDt7k1CWBXuj43waPiibdLCGQ-1CsC3nzq_ky30fDoHdL5n0s020ClKepxgGcDONt8"; // Get this from Firebase Console > Project Settings > Cloud Messaging
-
-  // Initialize FCM and get token when user is authenticated
-  // Initialize FCM and get token when user is authenticated
-  // In Calendar.jsx, update the initializeFCM function:
-
-  // In Calendar.jsx, update the initializeFCM function:
-
-  // In Calendar.jsx, update the initializeFCM function:
-
-  // In Calendar.jsx, update the checkDueNotifications function:
-
-  // useEffect(() => {
-  //   const checkDueNotifications = async () => {
-  //     if (!isAuthenticated) return;
-
-  //     const user = auth.currentUser;
-  //     if (!user) return;
-
-  //     const now = Date.now();
-  //     const oneMinuteAgo = now - 60000;
-
-  //     const thisDeviceId = localStorage.getItem("calendar_device_id");
-  //     if (!thisDeviceId) return;
-
-  //     try {
-  //       const notificationsRef = collection(
-  //         db,
-  //         "users",
-  //         user.uid,
-  //         "pushNotifications",
-  //       );
-
-  //       const q = query(
-  //         notificationsRef,
-  //         where("fireAt", "<=", now),
-  //         where("fireAt", ">=", oneMinuteAgo),
-  //         where("status", "==", "scheduled"),
-  //         where("deviceId", "==", thisDeviceId),
-  //       );
-
-  //       const snapshot = await getDocs(q);
-
-  //       if (snapshot.empty) {
-  //         console.log(
-  //           "⏰ No due notifications for this device at",
-  //           new Date().toLocaleTimeString(),
-  //         );
-  //         return;
-  //       }
-
-  //       console.log(
-  //         `🔔 Found ${snapshot.size} due notifications for this device!`,
-  //       );
-
-  //       // Get the service worker registration
-  //       const registration =
-  //         await navigator.serviceWorker.getRegistration("/andromeda/");
-
-  //       // Show notifications for each due reminder
-  //       snapshot.forEach(async (doc) => {
-  //         const notification = doc.data();
-
-  //         console.log(
-  //           "Showing notification on correct device:",
-  //           notification.body,
-  //         );
-
-  //         // ✅ FIXED: Use service worker to show notification
-  //         if (registration && Notification.permission === "granted") {
-  //           await registration.showNotification(
-  //             notification.title || "🔔 Reminder",
-  //             {
-  //               body: notification.body,
-  //               icon: "/andromeda/android-icon-192x192.png",
-  //               badge: "/andromeda/android-icon-192x192.png",
-  //               tag: notification.id,
-  //               requireInteraction: true,
-  //               vibrate: [200, 100, 200],
-  //               data: notification.data,
-  //               // actions: [
-  //               //   {
-  //               //     action: "view",
-  //               //     title: "👁️ View Calendar",
-  //               //   },
-  //               //   {
-  //               //     action: "dismiss",
-  //               //     title: "❌ Dismiss",
-  //               //   },
-  //               // ],
-  //             },
-  //           );
-  //         } else {
-  //           // Fallback for desktop (though this will also fail on mobile)
-  //           if (Notification.permission === "granted") {
-  //             new Notification(notification.title || "🔔 Reminder", {
-  //               body: notification.body,
-  //               icon: "/icon-192x192.png",
-  //             });
-  //           }
-  //         }
-
-  //         // Mark as sent in Firestore
-  //         await updateDoc(doc.ref, {
-  //           status: "sent",
-  //           sentAt: new Date().toISOString(),
-  //         });
-  //       });
-  //     } catch (error) {
-  //       console.error("Error checking notifications:", error);
-  //     }
-  //   };
-
-  //   // Check immediately
-  //   checkDueNotifications();
-
-  //   // Then check every 30 seconds
-  //   const interval = setInterval(checkDueNotifications, 30000);
-
-  //   return () => clearInterval(interval);
-  // }, [isAuthenticated]);
-
-  //   useEffect(() => {
-  //     const initializeFCM = async () => {
-  //       if (!isAuthenticated) return;
-
-  //       try {
-  //         console.log("📱 Starting FCM init on:", navigator.userAgent);
-  //         console.log(
-  //           "📱 Is mobile?",
-  //           /Mobile|Android|iP(hone|od)/.test(navigator.userAgent),
-  //         );
-
-  //         const basePath = "/andromeda/";
-  //         const messaging = getMessaging();
-
-  //         if ("serviceWorker" in navigator) {
-  //           const swUrl = `${window.location.origin}/andromeda/firebase-messaging-sw.js`;
-  //           console.log("📱 Registering service worker at:", swUrl);
-
-  //           const registration = await navigator.serviceWorker.register(swUrl, {
-  //             scope: "/andromeda/", // Keep the scope as /andromeda/ since your app is there
-  //           });
-
-  //           console.log(
-  //             "✅ Service Worker registered with scope:",
-  //             registration.scope,
-  //           );
-
-  //           // Check if service worker is active
-  //           if (registration.active) {
-  //             console.log("✅ Service Worker is active");
-  //           } else {
-  //             console.log("⏳ Service Worker is not active yet");
-  //           }
-  //         }
-
-  //         const permission = await Notification.requestPermission();
-  //         console.log("📱 Notification permission result:", permission);
-
-  //         if (permission === "granted") {
-  //           setNotificationPermission(true);
-
-  //           const registration =
-  //             await navigator.serviceWorker.getRegistration(basePath);
-
-  //           const token = await getToken(messaging, {
-  //             vapidKey:
-  //               "BJX394ZmLSR1x0DOBgEUdQDt7k1CWBXuj43waPiibdLCGQ-1CsC3nzq_ky30fDoHdL5n0s020ClKepxgGcDONt8",
-  //             serviceWorkerRegistration: registration,
-  //           });
-
-  //           if (token) {
-  //             console.log("✅ FCM Token obtained successfully on mobile!");
-  //             setFcmToken(token);
-  //             await saveTokenToFirestore(token);
-  //           } else {
-  //             console.log(
-  //               "❌ No FCM token returned - this is why mobile isn't working",
-  //             );
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error("❌ Error initializing FCM on mobile:", error);
-  //       }
-  //     };
-
-  //     initializeFCM();
-  //   }, [isAuthenticated]);
-  // Save FCM token to Firestore
-  // In Calendar.jsx, update the saveTokenToFirestore function:
-
-  const saveTokenToFirestore = async (token) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    try {
-      const deviceId =
-        localStorage.getItem("calendar_device_id") ||
-        "device_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-
-      if (!localStorage.getItem("calendar_device_id")) {
-        localStorage.setItem("calendar_device_id", deviceId);
-      }
-
-      const tokenRef = doc(db, "users", user.uid, "fcmTokens", token);
-      await setDoc(tokenRef, {
-        token,
-        deviceId: deviceId, // 👈 Store device ID with token
-        userAgent: navigator.userAgent,
-        platform: /Mobile|Android|iP(hone|od)/.test(navigator.userAgent)
-          ? "mobile"
-          : "desktop",
-        createdAt: new Date().toISOString(),
-        lastUsed: new Date().toISOString(),
-      });
-      console.log("✅ FCM token saved to Firestore with device ID:", deviceId);
-    } catch (error) {
-      console.error("Error saving FCM token:", error);
-    }
-  };
-
-  // Schedule push notification in Firestore
-  const schedulePushNotification = async (reminderData) => {
-    const notificationId =
-      await notificationService.scheduleNotification(reminderData);
-    if (notificationId) {
-      alert(
-        `✅ Reminder scheduled for ${new Date(reminderData.fireAt).toLocaleString()}`,
-      );
-    }
-    return notificationId;
-  };
-
-  // Enhanced reminder function with push notifications
-  async function addReminderForSelectedDate() {
-    if (!selectedDate) {
-      alert("Select a date first");
-      return;
-    }
-
-    // Check authentication
-    if (!isAuthenticated) {
-      alert("Please sign in to set reminders");
-      return;
-    }
-
-    // Check notification permission
-    if (!notificationPermission) {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        alert(
-          "Notification permission is required for reminders. Please enable it in your browser settings.",
-        );
-        return;
-      }
-      setNotificationPermission(true);
-    }
-
-    const timeInput = prompt(
-      "Enter reminder time (HH:MM, 24h format)",
-      "09:00",
-    );
-    if (!timeInput) return;
-
-    const [hh, mm] = timeInput.split(":").map(Number);
-    if (isNaN(hh) || isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-      alert("Invalid time format. Please use HH:MM (e.g., 14:30)");
-      return;
-    }
-
-    const message = prompt("Reminder message:");
-    if (!message) return;
-
-    const reminderDate = new Date(
-      currentYear,
-      currentMonth,
-      selectedDate,
-      hh,
-      mm,
-      0,
-      0,
-    );
-    const fireAt = reminderDate.getTime();
-
-    if (fireAt <= Date.now()) {
-      alert("Reminder time must be in the future");
-      return;
-    }
-
-    // Check if there are events on this date to associate with
-    const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
-    const eventsForDate = event.filter((e) => e.dateKeys?.includes(dateKey));
-
-    let eventId = null;
-    let eventName = null;
-
-    if (eventsForDate.length > 0) {
-      const eventOptions = eventsForDate
-        .map((e, i) => `${i + 1}. ${e.name}${e.time ? ` at ${e.time}` : ""}`)
-        .join("\n");
-
-      const choice = prompt(
-        `Events on this date:\n${eventOptions}\n\nEnter the number to associate with this reminder, or press Enter for a generic reminder:`,
-      );
-
-      if (choice && !isNaN(parseInt(choice))) {
-        const selectedIndex = parseInt(choice) - 1;
-        if (selectedIndex >= 0 && selectedIndex < eventsForDate.length) {
-          const selectedEvent = eventsForDate[selectedIndex];
-          eventId = selectedEvent.id;
-          eventName = selectedEvent.name;
-        }
-      }
-    }
-
-    // Schedule the push notification
-    const reminderData = {
-      message: eventName ? `Reminder: ${eventName} - ${message}` : message,
-      fireAt: fireAt,
-      dateKey: dateKey,
-      eventId: eventId,
-      eventName: eventName,
-      originalMessage: message,
-    };
-
-    console.log("🔍 reminderData being sent:", {
-      message: reminderData.message,
-      fireAt: reminderData.fireAt,
-      fireAtDate: reminderData.fireAt
-        ? new Date(reminderData.fireAt).toLocaleString()
-        : "MISSING",
-      dateKey: reminderData.dateKey,
-    });
-
-    await schedulePushNotification(reminderData);
-  }
-
-  //********************************************************************/
-
-  //   useEffect(() => {
-  //     const checkAuth = async () => {
-  //       const { auth, onAuthStateChanged } = await import("./firebase.js");
-  //       onAuthStateChanged(auth, (user) => {
-  //         if (user && !user.isAnonymous) {
-  //           console.log("✅ Calendar: User signed in:", user.email, user.uid);
-  //           setIsAuthenticated(true);
-  //           // Reset loading flag when user changes
-  //           hasLoadedRef.current = false;
-  //           loadAllCalendarData();
-  //         } else {
-  //           console.log("👤 Calendar: No user signed in or anonymous");
-  //           setIsAuthenticated(false);
-  //           setIsLoading(false);
-  //           if (user === null) {
-  //             setEvent([]);
-  //             setMoods([]);
-  //             setDateColors({});
-  //           }
-  //         }
-  //       });
-  //     };
-  //     checkAuth();
-  //   }, []);
-
-  // Load all calendar data from Firestore
-  const loadAllCalendarData = async () => {
-    if (!isAuthenticated || hasLoadedRef.current) {
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("🔄 Loading calendar data for current user...");
-    setIsLoading(true);
-
-    try {
-      const loadedEvents = await loadCalendarData();
-      const loadedMoods = await loadCalendarMoods();
-      const loadedDateColors = await loadCalendarDateColors();
-
-      // Update all states with loaded data
-      setEvent(loadedEvents || []);
-      setMoods(loadedMoods || []);
-      setDateColors(loadedDateColors || {});
-
-      hasLoadedRef.current = true;
-
-      console.log("📊 Calendar data loaded:", {
-        events: loadedEvents?.length || 0,
-        moods: loadedMoods?.length || 0,
-        dateColors: loadedDateColors ? Object.keys(loadedDateColors).length : 0,
-      });
-    } catch (error) {
-      console.error("Error loading calendar data from Firestore:", error);
-      setEvent([]);
-      setMoods([]);
-      setDateColors({});
-      hasLoadedRef.current = true;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Also load data when component mounts and user is authenticated
+  // Load data from local storage on component mount - ONLY ONCE
   useEffect(() => {
-    if (isAuthenticated && !hasLoadedRef.current) {
-      loadAllCalendarData();
-    }
-  }, [isAuthenticated]);
-
-  // Save events to Firestore when they change
-  useEffect(() => {
-    const saveEvents = async () => {
-      if (isAuthenticated && hasLoadedRef.current) {
-        try {
-          console.log("💾 Saving events to Firestore:", event.length);
-          await saveCalendarData(event);
-          console.log("✅ Events saved to Firestore");
-        } catch (error) {
-          console.error("❌ Error saving events to Firestore:", error);
-        }
-      }
-    };
-
+    // Skip if already loaded
     if (hasLoadedRef.current) {
-      saveEvents();
+      console.log("⏭️ Data already loaded, skipping...");
+      return;
     }
-  }, [event, isAuthenticated]);
 
-  // Save moods to Firestore when they change
-  useEffect(() => {
-    const saveMoods = async () => {
-      if (isAuthenticated && hasLoadedRef.current) {
-        try {
-          console.log("💾 Saving moods to Firestore:", moods.length);
-          await saveCalendarMoods(moods);
-          console.log("✅ Moods saved to Firestore");
-        } catch (error) {
-          console.error("❌ Error saving moods to Firestore:", error);
-        }
-      }
-    };
+    const loadAllData = () => {
+      console.log("🔄 Loading calendar data from local storage...");
+      setIsLoading(true);
 
-    if (hasLoadedRef.current) {
-      saveMoods();
-    }
-  }, [moods, isAuthenticated]);
-
-  // Save date colors to Firestore when they change
-  useEffect(() => {
-    const saveDateColors = async () => {
-      if (isAuthenticated && hasLoadedRef.current) {
-        try {
+      try {
+        // Load events
+        const loadedEvents = loadFromLocalStorage(STORAGE_KEYS.EVENTS);
+        if (
+          loadedEvents &&
+          Array.isArray(loadedEvents) &&
+          loadedEvents.length > 0
+        ) {
+          setEvent(loadedEvents);
           console.log(
-            "💾 Saving date colors to Firestore:",
-            Object.keys(dateColors).length,
+            `✅ Loaded ${loadedEvents.length} events from local storage`,
           );
-          await saveCalendarDateColors(dateColors);
-          console.log("✅ Date colors saved to Firestore");
-        } catch (error) {
-          console.error("❌ Error saving date colors to Firestore:", error);
+        } else {
+          console.log("ℹ️ No events found in local storage, using empty array");
+          setEvent([]);
         }
+
+        // Load moods
+        const loadedMoods = loadFromLocalStorage(STORAGE_KEYS.MOODS);
+        if (
+          loadedMoods &&
+          Array.isArray(loadedMoods) &&
+          loadedMoods.length > 0
+        ) {
+          setMoods(loadedMoods);
+          console.log(
+            `✅ Loaded ${loadedMoods.length} moods from local storage`,
+          );
+        } else {
+          setMoods([]);
+        }
+
+        // Load date colors
+        const loadedDateColors = loadFromLocalStorage(STORAGE_KEYS.DATE_COLORS);
+        if (
+          loadedDateColors &&
+          typeof loadedDateColors === "object" &&
+          Object.keys(loadedDateColors).length > 0
+        ) {
+          setDateColors(loadedDateColors);
+          console.log(
+            `✅ Loaded ${Object.keys(loadedDateColors).length} date colors from local storage`,
+          );
+        } else {
+          setDateColors({});
+        }
+
+        hasLoadedRef.current = true;
+      } catch (error) {
+        console.error("❌ Error loading data from local storage:", error);
+        setEvent([]);
+        setMoods([]);
+        setDateColors({});
+        hasLoadedRef.current = true;
+      } finally {
+        setIsLoading(false);
       }
     };
 
+    loadAllData();
+  }, []); // Empty dependency array - runs only once on mount
+
+  // Save events to local storage when they change
+  useEffect(() => {
     if (hasLoadedRef.current) {
-      saveDateColors();
+      saveToLocalStorage(STORAGE_KEYS.EVENTS, event);
     }
-  }, [dateColors, isAuthenticated]);
+  }, [event]);
+
+  // Save moods to local storage when they change
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      saveToLocalStorage(STORAGE_KEYS.MOODS, moods);
+    }
+  }, [moods]);
+
+  // Save date colors to local storage when they change
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      saveToLocalStorage(STORAGE_KEYS.DATE_COLORS, dateColors);
+    }
+  }, [dateColors]);
 
   const isDarkTheme = useDarkTheme();
 
-  useEffect(() => {
-    function scheduleMidnightReload() {
-      const now = new Date();
-      const midnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1,
-        0,
-        0,
-        0,
-        0,
-      );
+  // Helper functions
+  function getMonthDatesByWeekday(month, year) {
+    const now = new Date();
+    const defaultMonth = now.getMonth();
+    const defaultYear = now.getFullYear();
 
-      const msUntilMidnight = midnight - now;
-      console.log("Reload scheduled in", msUntilMidnight, "ms");
-
-      return setTimeout(() => {
-        console.log("Reloading at exact midnight...");
-        window.location.reload();
-      }, msUntilMidnight);
+    let targetMonth;
+    if (typeof month === "string") {
+      const monthNames = [
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+      ];
+      const monthLower = month.toLowerCase();
+      targetMonth = monthNames.indexOf(monthLower);
+      if (targetMonth === -1) {
+        targetMonth = defaultMonth;
+      }
+    } else if (typeof month === "number" && month >= 0 && month <= 11) {
+      targetMonth = month;
+    } else {
+      targetMonth = defaultMonth;
     }
 
-    const midnightTimeout = scheduleMidnightReload();
-
-    function checkDateOnReturn() {
-      const lastOpen = sessionStorage.getItem("lastCalendarOpen");
-      const today = new Date().toDateString();
-
-      if (lastOpen !== today) {
-        console.log("Date changed while backgrounded → reloading...");
-        window.location.reload();
+    let targetYear;
+    if (year !== undefined) {
+      targetYear = Number(year);
+      if (isNaN(targetYear)) {
+        targetYear = defaultYear;
       }
+    } else {
+      targetYear = defaultYear;
     }
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        checkDateOnReturn();
-      }
-    });
+    const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
+    const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
 
-    window.addEventListener("focus", checkDateOnReturn);
-
-    sessionStorage.setItem("lastCalendarOpen", new Date().toDateString());
-
-    return () => {
-      clearTimeout(midnightTimeout);
-      window.removeEventListener("focus", checkDateOnReturn);
-      document.removeEventListener("visibilitychange", checkDateOnReturn);
+    const result = {
+      Sunday: [],
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
+      Saturday: [],
     };
-  }, []);
 
-  const handleSaveEvent = (eventData) => {
+    const currentDate = new Date(firstDayOfMonth);
+
+    while (currentDate <= lastDayOfMonth) {
+      const dayOfMonth = currentDate.getDate();
+      const dayOfWeek = currentDate.getDay();
+      const dayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      const dayName = dayNames[dayOfWeek];
+      result[dayName].push(dayOfMonth);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return result;
+  }
+
+  function getWeeks(month = currentMonth, year = currentYear) {
+    const monthDates = getMonthDatesByWeekday(month, year);
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    let firstDayIndex = -1;
+    for (let i = 0; i < dayNames.length; i++) {
+      if (monthDates[dayNames[i]].includes(1)) {
+        firstDayIndex = i;
+        break;
+      }
+    }
+
+    if (firstDayIndex === -1) {
+      return [];
+    }
+
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const totalDays = lastDayOfMonth.getDate();
+
+    const allDates = [];
+    for (let i = 1; i <= totalDays; i++) {
+      allDates.push(i);
+    }
+
+    const weeks = [];
+    const week1 = Array(7).fill(" ");
+
+    for (
+      let i = firstDayIndex, dayIndex = 0;
+      i < 7 && dayIndex < allDates.length;
+      i++, dayIndex++
+    ) {
+      week1[i] = allDates[dayIndex];
+    }
+    weeks.push(week1);
+
+    let dayIndex = 7 - firstDayIndex;
+
+    while (dayIndex < allDates.length) {
+      const week = [];
+      for (let i = 0; i < 7 && dayIndex < allDates.length; i++, dayIndex++) {
+        week.push(allDates[dayIndex]);
+      }
+      while (week.length < 7) {
+        week.push(" ");
+      }
+      weeks.push(week);
+    }
+
+    return weeks;
+  }
+
+  function getDayForDate(targetDate) {
+    const dateObj = new Date(currentYear, currentMonth, targetDate);
+    const dayOfWeek = dateObj.getDay();
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    return dayNames[dayOfWeek];
+  }
+
+  function getOrdinalSuffix(date) {
+    if (!date) return "";
+    const lastDigit = date % 10;
+    const lastTwoDigits = date % 100;
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+      return `${date}th`;
+    }
+    switch (lastDigit) {
+      case 1:
+        return `${date}st`;
+      case 2:
+        return `${date}nd`;
+      case 3:
+        return `${date}rd`;
+      default:
+        return `${date}th`;
+    }
+  }
+
+  function needsConnectionToRight(date) {
+    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    if (date === lastDayOfMonth) {
+      return false;
+    }
+
+    for (const ev of event) {
+      if (ev.dateKeys && ev.dateKeys.includes(dateKey)) {
+        const nextDate = date + 1;
+        const nextDateKey = `${currentYear}-${currentMonth + 1}-${nextDate}`;
+        if (ev.dateKeys.includes(nextDateKey)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function needsConnectionToNextMonth(date) {
+    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    if (date !== lastDayOfMonth) {
+      return false;
+    }
+
+    for (const ev of event) {
+      if (ev.dateKeys && ev.dateKeys.includes(dateKey)) {
+        if (ev.spansMonths) {
+          const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+          const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+          const nextMonthFirstDayKey = `${nextYear}-${nextMonth + 1}-1`;
+          if (ev.dateKeys.includes(nextMonthFirstDayKey)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function getEventConnectionInfo(date) {
+    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+    const eventsForDate = event.filter(
+      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
+    );
+
+    if (eventsForDate.length === 0) {
+      return { hasEvent: false, connectionClass: "" };
+    }
+
+    const needsRightConnection = needsConnectionToRight(date);
+    const needsNextMonthConnection = needsConnectionToNextMonth(date);
+    let connectionClass = "";
+
+    if (needsNextMonthConnection) {
+      connectionClass = "last-day-connected";
+    } else if (needsRightConnection) {
+      connectionClass = "connected-right";
+    }
+
+    return { hasEvent: true, connectionClass };
+  }
+
+  function getAllMonthsForYear(targetYear) {
+    const monthsData = {};
+
+    for (let month = 0; month < 12; month++) {
+      const monthName = new Date(targetYear, month).toLocaleString("default", {
+        month: "long",
+      });
+
+      const monthDates = getMonthDatesByWeekday(month, targetYear);
+      const weeks = getWeeks(month, targetYear);
+
+      monthsData[monthName] = {
+        monthNumber: month,
+        year: targetYear,
+        monthDates: monthDates,
+        weeks: weeks,
+        totalDays: new Date(targetYear, month + 1, 0).getDate(),
+        firstDay: new Date(targetYear, month, 1).getDay(),
+        monthName: monthName,
+      };
+    }
+
+    return monthsData;
+  }
+
+  // Navigation functions
+  function goToNextMonth() {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear((prev) => prev + 1);
+    } else {
+      setCurrentMonth((prev) => prev + 1);
+    }
+  }
+
+  function goToPrevMonth() {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear((prev) => prev - 1);
+    } else {
+      setCurrentMonth((prev) => prev - 1);
+    }
+  }
+
+  function goToYearView() {
+    setYearViewYear(currentYear);
+    setCurrentView("year");
+  }
+
+  function goToMonthView() {
+    setCurrentView("month");
+  }
+
+  function updateEventViewer(date) {
+    setSelectedDate(date);
+    setEventViewerActive(true);
+  }
+
+  function closeEventViewer() {
+    setEventViewerActive(false);
+    setSelectedDate(null);
+  }
+
+  function addEventForSelectedDate() {
+    setShowEventEditor(true);
+  }
+
+  function handleEditEvent(eventId) {
+    const eventToEdit = event.find((e) => e.id === eventId);
+    if (eventToEdit) {
+      setEditingEvent(eventToEdit);
+      setShowEventEditor(true);
+    }
+  }
+
+  function handleSaveEvent(eventData) {
     if (!selectedDate) return;
 
     const startDate = parseInt(selectedDate);
@@ -735,301 +633,239 @@ function Calendar() {
         setEvent((prev) => [...prev, newEvent]);
       }
     }
-  };
-
-  function ensureNotificationPermission() {
-    if (!("Notification" in window)) {
-      alert("Notifications are not supported in this browser.");
-      return false;
-    }
-
-    if (Notification.permission === "granted") {
-      return true;
-    }
-
-    if (Notification.permission === "denied") {
-      alert(
-        "You have blocked notifications for this site in browser settings.",
-      );
-      return false;
-    }
-
-    return Notification.requestPermission().then((result) => {
-      if (result === "granted") {
-        return true;
-      } else {
-        alert("Notification permission was not granted.");
-        return false;
-      }
-    });
+    setShowEventEditor(false);
   }
 
-  //ensureNotificationPermission();
+  function updateEventViewerBackgroundColor(color) {
+    if (!selectedDate) return;
 
-  function getMonthDatesByWeekday(month, year) {
-    const now = new Date();
-    const defaultMonth = now.getMonth();
-    const defaultYear = now.getFullYear();
+    const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
+    const hasEventForDate = event.some(
+      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
+    );
 
-    let targetMonth;
-    if (typeof month === "string") {
-      const monthNames = [
-        "january",
-        "february",
-        "march",
-        "april",
-        "may",
-        "june",
-        "july",
-        "august",
-        "september",
-        "october",
-        "november",
-        "december",
-      ];
-      const monthLower = month.toLowerCase();
-      targetMonth = monthNames.indexOf(monthLower);
-      if (targetMonth === -1) {
-        targetMonth = defaultMonth;
-      }
-    } else if (typeof month === "number" && month >= 0 && month <= 11) {
-      targetMonth = month;
-    } else {
-      targetMonth = defaultMonth;
+    setViewerBg(color);
+
+    if (hasEventForDate) {
+      setDateColors((prev) => ({
+        ...prev,
+        [dateKey]: color,
+      }));
+    }
+  }
+
+  function handleMood() {
+    const today = new Date();
+    const todayDate = today.getDate();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+
+    const dateKey = `${todayYear}-${todayMonth + 1}-${todayDate}`;
+    const mood = window.prompt("Enter mood (emoji):");
+
+    if (mood === null || mood.trim() === "") {
+      return;
     }
 
-    let targetYear;
-    if (year !== undefined) {
-      targetYear = Number(year);
-      if (isNaN(targetYear)) {
-        targetYear = defaultYear;
-      }
+    const existingMoodIndex = moods.findIndex(
+      (item) => item.dateKey === dateKey,
+    );
+
+    if (existingMoodIndex !== -1) {
+      setMoods((prev) =>
+        prev.map((m, index) =>
+          index === existingMoodIndex ? { ...m, mood: mood } : m,
+        ),
+      );
+      alert(`Mood updated for today!`);
     } else {
-      targetYear = defaultYear;
+      const newMood = {
+        id: Date.now(),
+        dateKey: dateKey,
+        date: todayDate,
+        month: todayMonth,
+        year: todayYear,
+        mood: mood,
+      };
+
+      setMoods((prev) => [...prev, newMood]);
+      alert(`Mood added for today!`);
+    }
+  }
+
+  function onEventDelete(eventId) {
+    setEventToDelete(eventId);
+    setDeleteWarningActive(true);
+  }
+
+  function cancelDelete() {
+    setDeleteWarningActive(false);
+    setEventToDelete(null);
+  }
+
+  function confirmDelete() {
+    if (!eventToDelete) {
+      setDeleteWarningActive(false);
+      return;
     }
 
-    const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
-    const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
+    const eventToRemove = event.find((e) => e.id === eventToDelete);
+    const updatedEvents = event.filter((event) => event.id !== eventToDelete);
 
-    const result = {
-      Sunday: [],
-      Monday: [],
-      Tuesday: [],
-      Wednesday: [],
-      Thursday: [],
-      Friday: [],
-      Saturday: [],
+    setEvent(updatedEvents);
+
+    if (eventToRemove && eventToRemove.dateKeys) {
+      const newColors = { ...dateColors };
+      eventToRemove.dateKeys.forEach((dateKey) => {
+        delete newColors[dateKey];
+      });
+      setDateColors(newColors);
+    }
+
+    setDeleteWarningActive(false);
+    setEventToDelete(null);
+
+    if (eventToRemove && selectedDate) {
+      const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
+      const remainingEvents = updatedEvents.filter(
+        (e) => e.dateKeys && e.dateKeys.includes(dateKey),
+      );
+
+      if (remainingEvents.length === 0) {
+        setEventViewerActive(false);
+      }
+    }
+
+    alert("Event deleted successfully!");
+  }
+
+  async function addReminderForSelectedDate() {
+    if (!selectedDate) {
+      alert("Select a date first");
+      return;
+    }
+
+    if (!notificationPermission) {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        alert(
+          "Notification permission is required for reminders. Please enable it in your browser settings.",
+        );
+        return;
+      }
+      setNotificationPermission(true);
+    }
+
+    const timeInput = prompt(
+      "Enter reminder time (HH:MM, 24h format)",
+      "09:00",
+    );
+    if (!timeInput) return;
+
+    const [hh, mm] = timeInput.split(":").map(Number);
+    if (isNaN(hh) || isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+      alert("Invalid time format. Please use HH:MM (e.g., 14:30)");
+      return;
+    }
+
+    const message = prompt("Reminder message:");
+    if (!message) return;
+
+    const reminderDate = new Date(
+      currentYear,
+      currentMonth,
+      selectedDate,
+      hh,
+      mm,
+      0,
+      0,
+    );
+    const fireAt = reminderDate.getTime();
+
+    if (fireAt <= Date.now()) {
+      alert("Reminder time must be in the future");
+      return;
+    }
+
+    const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
+    const eventsForDate = event.filter((e) => e.dateKeys?.includes(dateKey));
+
+    let eventId = null;
+    let eventName = null;
+
+    if (eventsForDate.length > 0) {
+      const eventOptions = eventsForDate
+        .map((e, i) => `${i + 1}. ${e.name}${e.time ? ` at ${e.time}` : ""}`)
+        .join("\n");
+
+      const choice = prompt(
+        `Events on this date:\n${eventOptions}\n\nEnter the number to associate with this reminder, or press Enter for a generic reminder:`,
+      );
+
+      if (choice && !isNaN(parseInt(choice))) {
+        const selectedIndex = parseInt(choice) - 1;
+        if (selectedIndex >= 0 && selectedIndex < eventsForDate.length) {
+          const selectedEvent = eventsForDate[selectedIndex];
+          eventId = selectedEvent.id;
+          eventName = selectedEvent.name;
+        }
+      }
+    }
+
+    const reminderData = {
+      message: eventName ? `Reminder: ${eventName} - ${message}` : message,
+      fireAt: fireAt,
+      dateKey: dateKey,
+      eventId: eventId,
+      eventName: eventName,
+      originalMessage: message,
     };
 
-    const currentDate = new Date(firstDayOfMonth);
-
-    while (currentDate <= lastDayOfMonth) {
-      const dayOfMonth = currentDate.getDate();
-      const dayOfWeek = currentDate.getDay();
-
-      const dayNames = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
-      const dayName = dayNames[dayOfWeek];
-
-      result[dayName].push(dayOfMonth);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return result;
-  }
-
-  function getWeeks(month = currentMonth, year = currentYear) {
-    const monthDates = getMonthDatesByWeekday(month, year);
-
-    let firstDayIndex = -1;
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-
-    for (let i = 0; i < dayNames.length; i++) {
-      if (monthDates[dayNames[i]].includes(1)) {
-        firstDayIndex = i;
-        break;
-      }
-    }
-
-    if (firstDayIndex === -1) {
-      return [];
-    }
-
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    const totalDays = lastDayOfMonth.getDate();
-
-    const allDates = [];
-    for (let i = 1; i <= totalDays; i++) {
-      allDates.push(i);
-    }
-
-    const weeks = [];
-    const week1 = Array(7).fill(" ");
-
-    for (
-      let i = firstDayIndex, dayIndex = 0;
-      i < 7 && dayIndex < allDates.length;
-      i++, dayIndex++
-    ) {
-      week1[i] = allDates[dayIndex];
-    }
-    weeks.push(week1);
-
-    let dayIndex = 7 - firstDayIndex;
-
-    while (dayIndex < allDates.length) {
-      const week = [];
-
-      for (let i = 0; i < 7 && dayIndex < allDates.length; i++, dayIndex++) {
-        week.push(allDates[dayIndex]);
-      }
-
-      while (week.length < 7) {
-        week.push(" ");
-      }
-
-      weeks.push(week);
-    }
-
-    return weeks;
-  }
-
-  function getAllMonthsForYear(targetYear) {
-    const monthsData = {};
-
-    for (let month = 0; month < 12; month++) {
-      const monthName = new Date(targetYear, month).toLocaleString("default", {
-        month: "long",
-      });
-
-      const monthDates = getMonthDatesByWeekday(month, targetYear);
-      const weeks = getWeeks(month, targetYear);
-
-      monthsData[monthName] = {
-        monthNumber: month,
-        year: targetYear,
-        monthDates: monthDates,
-        weeks: weeks,
-        totalDays: new Date(targetYear, month + 1, 0).getDate(),
-        firstDay: new Date(targetYear, month, 1).getDay(),
-        monthName: monthName,
+    try {
+      const existingReminders =
+        loadFromLocalStorage(STORAGE_KEYS.REMINDERS) || [];
+      const newReminder = {
+        id: Date.now(),
+        ...reminderData,
+        status: "scheduled",
+        createdAt: new Date().toISOString(),
+        deviceId:
+          localStorage.getItem("calendar_device_id") || "default_device",
       };
-    }
 
-    return monthsData;
-  }
+      const updatedReminders = [...existingReminders, newReminder];
+      saveToLocalStorage(STORAGE_KEYS.REMINDERS, updatedReminders);
 
-  function goToNextMonth() {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear((prev) => prev + 1);
-    } else {
-      setCurrentMonth((prev) => prev + 1);
-    }
-  }
-
-  function goToPrevMonth() {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear((prev) => prev - 1);
-    } else {
-      setCurrentMonth((prev) => prev - 1);
+      console.log("✅ Reminder saved to local storage:", newReminder);
+      alert(
+        `✅ Reminder scheduled for ${new Date(reminderData.fireAt).toLocaleString()}`,
+      );
+    } catch (error) {
+      console.error("Error saving reminder to local storage:", error);
     }
   }
 
-  function goToToday() {
-    const today = new Date();
-    setCurrentMonth(today.getMonth());
-    setCurrentYear(today.getFullYear());
-    setCurrentView("month");
-  }
+  function clearAllCalendarData() {
+    if (window.confirm("Are you sure you want to clear all calendar data?")) {
+      localStorage.removeItem(STORAGE_KEYS.EVENTS);
+      localStorage.removeItem(STORAGE_KEYS.MOODS);
+      localStorage.removeItem(STORAGE_KEYS.DATE_COLORS);
+      localStorage.removeItem(STORAGE_KEYS.REMINDERS);
 
-  function updateEventViewer(date) {
-    setSelectedDate(date);
-    setEventViewerActive(true);
-  }
+      setEvent([]);
+      setMoods([]);
+      setDateColors({});
 
-  function addEventForSelectedDate() {
-    setShowEventEditor(true);
-  }
-
-  function handleEditEvent(eventId) {
-    const eventToEdit = event.find((e) => e.id === eventId);
-    if (eventToEdit) {
-      setEditingEvent(eventToEdit);
-      setShowEventEditor(true);
+      console.log("🗑️ All calendar data cleared from local storage");
+      alert("All calendar data has been cleared.");
+      window.location.reload();
     }
   }
 
-  function getOrdinalSuffix(date) {
-    if (!date) return "";
+  // EventViewer Component
+  function EventViewerComponent() {
+    if (!eventViewerActive || !selectedDate) return null;
 
-    const lastDigit = date % 10;
-    const lastTwoDigits = date % 100;
-
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
-      return `${date}th`;
-    }
-
-    switch (lastDigit) {
-      case 1:
-        return `${date}st`;
-      case 2:
-        return `${date}nd`;
-      case 3:
-        return `${date}rd`;
-      default:
-        return `${date}th`;
-    }
-  }
-
-  function goToNextYear() {
-    setYearViewYear((prev) => prev + 1);
-  }
-
-  function goToPrevYear() {
-    setYearViewYear((prev) => prev - 1);
-  }
-
-  function goToYearView() {
-    setYearViewYear(currentYear);
-    setCurrentView("year");
-  }
-
-  function goToMonthView() {
-    setCurrentView("month");
-  }
-
-  function goToTodayYearView() {
-    const today = new Date();
-    setYearViewYear(today.getFullYear());
-    setCurrentView("year");
-  }
-
-  function EventViewer({
-    event,
-    selectedDate,
-    onAddEvent,
-    onAddReminder,
-    onEventDelete,
-    onEventEdit,
-  }) {
     const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
     const eventsForSelectedDate = event.filter(
       (item) => item.dateKeys && item.dateKeys.includes(dateKey),
@@ -1040,206 +876,190 @@ function Calendar() {
     const backgroundColor = dateColors[dateKey] || viewerBg;
 
     return (
-      <>
-        {eventViewerActive && (
-          <div
+      <div
+        style={{
+          marginTop: "20px",
+          padding: "20px",
+          background: backgroundColor,
+        }}
+        className="event-viewer"
+      >
+        <div className="event-viewer-name">
+          <h3 style={{ color: "white" }}>EVENT VIEWER</h3>
+        </div>
+        <div className="event-header">
+          <h3
             style={{
-              marginTop: "20px",
-              padding: "20px",
-              background: backgroundColor,
+              color: "white",
+              fontSize: "30px",
             }}
-            className="event-viewer"
           >
-            <div className="event-viewer-name">
-              <h3 style={{ color: "white" }}>EVENT VIEWER</h3>
-            </div>
-            <div className="event-header">
-              <h3
+            {day}, {getOrdinalSuffix(selectedDate)}.
+          </h3>
+          <button className="cls-nt-btn" onClick={closeEventViewer}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div className="add-evnt-btn">
+          <button className="evnt-reminder" onClick={addEventForSelectedDate}>
+            <i className="fa-solid fa-square-plus"></i>
+          </button>
+        </div>
+
+        {moodForSelectedDate && (
+          <div
+            className="mood-display"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: "15px",
+              marginBottom: "10px",
+              fontSize: "15px",
+              color: "greenyellow",
+            }}
+          >
+            {moodForSelectedDate.mood}
+          </div>
+        )}
+        {eventsForSelectedDate.length === 0 ? (
+          <div className="warn">
+            <p style={{ color: "white", marginTop: "30px" }}>No Events.</p>
+          </div>
+        ) : (
+          eventsForSelectedDate.map((item, index) => (
+            <div
+              key={item.id}
+              className="event-name-text"
+              style={{
+                color: "white",
+                marginTop: "20px",
+                gap: "10px",
+                padding: "15px",
+                borderRadius: "8px",
+              }}
+            >
+              <div
+                className="event-name"
                 style={{
-                  color: "white",
+                  lineHeight: "1.6",
+                  fontWeight: "bold",
+                  fontFamily: "Inter, sans-serif",
                   fontSize: "30px",
                 }}
               >
-                {day}, {getOrdinalSuffix(selectedDate)}.
-              </h3>
-              <button className="cls-nt-btn" onClick={closeEventViewer}>
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-            <div className="add-evnt-btn">
-              <button className="evnt-reminder" onClick={onAddEvent}>
-                <i className="fa-solid fa-square-plus"></i>
-              </button>
-              <button className="evnt-reminder" onClick={onAddReminder}>
-                <i className="fa-solid fa-bell"></i>
-              </button>
-              <div>
-                <input
-                  type="color"
-                  className="color-picker"
-                  value={backgroundColor}
-                  onChange={(e) =>
-                    updateEventViewerBackgroundColor(e.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            {moodForSelectedDate && (
-              <div
-                className="mood-display"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: "15px",
-                  marginBottom: "10px",
-                  fontSize: "15px",
-                  color: "greenyellow",
-                }}
-              >
-                {moodForSelectedDate.mood}
-              </div>
-            )}
-            {eventsForSelectedDate.length === 0 ? (
-              <div className="warn">
-                <p style={{ color: "white", marginTop: "30px" }}>No Events.</p>
-              </div>
-            ) : (
-              eventsForSelectedDate.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="event-name-text"
-                  style={{
-                    color: "white",
-                    marginTop: "20px",
-                    gap: "10px",
-                    padding: "15px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div
-                    className="event-name"
+                {index + 1}.{" "}
+                <span style={{ color: "gold" }}>
+                  <i className="fa-solid fa-tag"></i>
+                </span>{" "}
+                {item.name}
+                {item.eventDates && item.eventDates.length > 1 && (
+                  <span
                     style={{
-                      lineHeight: "1.6",
-                      fontWeight: "bold",
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: "30px",
+                      fontSize: "18px",
+                      color: "#ccc",
+                      marginLeft: "10px",
                     }}
                   >
-                    {index + 1}.{" "}
-                    <span style={{ color: "gold" }}>
-                      <i className="fa-solid fa-tag"></i>
-                    </span>{" "}
-                    {item.name}
-                    {item.eventDates && item.eventDates.length > 1 && (
-                      <span
-                        style={{
-                          fontSize: "18px",
-                          color: "#ccc",
-                          marginLeft: "10px",
-                        }}
-                      >
-                        ({item.startDate} - {item.endDate})
-                      </span>
-                    )}
-                  </div>
+                    ({item.startDate} - {item.endDate})
+                  </span>
+                )}
+              </div>
 
-                  <hr
-                    style={{
-                      borderColor: "white",
-                      margin: "10px 0",
-                    }}
-                  />
+              <hr
+                style={{
+                  borderColor: "white",
+                  margin: "10px 0",
+                }}
+              />
 
-                  {item.description && (
-                    <div
-                      className="event-desc"
-                      style={{
-                        lineHeight: "1.6",
-                        fontWeight: "bold",
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: "25px",
-                      }}
-                    >
-                      <span style={{ color: "orange" }}>
-                        <i className="fa-solid fa-circle-info"></i>
-                      </span>{" "}
-                      Description: {item.description}
-                    </div>
-                  )}
-
-                  {item.time && (
-                    <div
-                      className="event-time"
-                      style={{
-                        lineHeight: "1.6",
-                        fontWeight: "bold",
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: "25px",
-                      }}
-                    >
-                      <span style={{ color: "yellow" }}>
-                        <i className="fa-solid fa-clock"></i>
-                      </span>{" "}
-                      Time: {item.time}
-                    </div>
-                  )}
-
-                  {item.location && (
-                    <div
-                      className="event-loc"
-                      style={{
-                        lineHeight: "1.6",
-                        fontWeight: "bold",
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: "25px",
-                      }}
-                    >
-                      <span style={{ color: "green" }}>
-                        <i className="fa-solid fa-location-dot"></i>
-                      </span>{" "}
-                      Location: {item.location}
-                    </div>
-                  )}
-
-                  <hr
-                    style={{
-                      borderColor: "white",
-                      margin: "10px 0",
-                    }}
-                  />
-                  <div className="event-dlt-btn">
-                    <button
-                      className="dlt-evnt-btn"
-                      onClick={() => onEventEdit(item.id)}
-                      style={{
-                        cursor: "pointer",
-                      }}
-                    >
-                      <i className="fa-solid fa-pen"></i>
-                    </button>
-
-                    <button
-                      className="dlt-evnt-btn"
-                      onClick={() => onEventDelete(item.id)}
-                      style={{
-                        cursor: "pointer",
-                      }}
-                    >
-                      <i className="fa-solid fa-trash"></i>
-                    </button>
-                  </div>
+              {item.description && (
+                <div
+                  className="event-desc"
+                  style={{
+                    lineHeight: "1.6",
+                    fontWeight: "bold",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: "25px",
+                  }}
+                >
+                  <span style={{ color: "orange" }}>
+                    <i className="fa-solid fa-circle-info"></i>
+                  </span>{" "}
+                  Description: {item.description}
                 </div>
-              ))
-            )}
-          </div>
+              )}
+
+              {item.time && (
+                <div
+                  className="event-time"
+                  style={{
+                    lineHeight: "1.6",
+                    fontWeight: "bold",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: "25px",
+                  }}
+                >
+                  <span style={{ color: "yellow" }}>
+                    <i className="fa-solid fa-clock"></i>
+                  </span>{" "}
+                  Time: {item.time}
+                </div>
+              )}
+
+              {item.location && (
+                <div
+                  className="event-loc"
+                  style={{
+                    lineHeight: "1.6",
+                    fontWeight: "bold",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: "25px",
+                  }}
+                >
+                  <span style={{ color: "green" }}>
+                    <i className="fa-solid fa-location-dot"></i>
+                  </span>{" "}
+                  Location: {item.location}
+                </div>
+              )}
+
+              <hr
+                style={{
+                  borderColor: "white",
+                  margin: "10px 0",
+                }}
+              />
+              <div className="event-dlt-btn">
+                <button
+                  className="dlt-evnt-btn"
+                  onClick={() => handleEditEvent(item.id)}
+                  style={{
+                    cursor: "pointer",
+                  }}
+                >
+                  <i className="fa-solid fa-pen"></i>
+                </button>
+
+                <button
+                  className="dlt-evnt-btn"
+                  onClick={() => onEventDelete(item.id)}
+                  style={{
+                    cursor: "pointer",
+                  }}
+                >
+                  <i className="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          ))
         )}
-      </>
+      </div>
     );
   }
 
-  function YearView({ year, isDarkTheme }) {
+  // YearView Component
+  function YearViewComponent({ year, isDarkTheme }) {
     const yearData = getAllMonthsForYear(year);
     const monthNames = [
       "January",
@@ -1271,6 +1091,160 @@ function Calendar() {
         setCurrentYear(year);
         setCurrentView("month");
       }
+    };
+
+    // Helper to render month content
+    const renderMonthContent = (monthName, monthData, weeks, yr) => {
+      const dayAbbreviations = ["S", "M", "T", "W", "T", "F", "S"];
+      const today = new Date();
+      const todayDate = today.getDate();
+
+      return (
+        <>
+          <div
+            className="month-header"
+            style={{
+              textAlign: "center",
+              marginBottom: "10px",
+            }}
+          >
+            <p
+              className="month-title"
+              style={{
+                margin: 0,
+                fontSize: "11px",
+                color: isDarkTheme ? "white" : "#000033",
+              }}
+            >
+              {monthName.substring(0, 3)}
+            </p>
+          </div>
+
+          <div
+            className="month-day-headers"
+            style={{
+              display: "flex",
+              marginBottom: "5px",
+            }}
+          >
+            {dayAbbreviations.map((day, index) => (
+              <span
+                key={index}
+                className="day-header"
+                style={{
+                  fontSize: "12px",
+                  textAlign: "center",
+                  color: isDarkTheme ? "white" : "#000033",
+                  flex: "1",
+                  minWidth: "0",
+                }}
+              >
+                {day}
+              </span>
+            ))}
+          </div>
+
+          <div className="month-weeks">
+            {weeks.map((week, weekIndex) => (
+              <div
+                key={weekIndex}
+                className="month-week"
+                style={{
+                  display: "flex",
+                  marginBottom: "2px",
+                  alignItems: "center",
+                }}
+              >
+                {week.map((date, dateIndex) => {
+                  if (date === " ") {
+                    return (
+                      <span
+                        key={dateIndex}
+                        className="month-date empty"
+                        style={{
+                          fontSize: "12px",
+                          textAlign: "center",
+                          padding: "2px 0",
+                          flex: "1",
+                          minWidth: "0",
+                        }}
+                      >
+                        &nbsp;
+                      </span>
+                    );
+                  }
+
+                  const isToday =
+                    yr === today.getFullYear() &&
+                    monthData.monthNumber === today.getMonth() &&
+                    date === today.getDate();
+
+                  const dateKey = `${yr}-${monthData.monthNumber + 1}-${date}`;
+                  const hasEvent = event.some(
+                    (item) => item.dateKeys && item.dateKeys.includes(dateKey),
+                  );
+
+                  const dateObj = new Date(yr, monthData.monthNumber, date);
+                  const isSunday = dateObj.getDay() === 0;
+
+                  return (
+                    <span
+                      key={dateIndex}
+                      className={`month-date ${isToday ? "today" : ""} ${
+                        hasEvent ? "has-event" : ""
+                      }`}
+                      style={{
+                        fontSize: "12px",
+                        textAlign: "center",
+                        padding: "2px 0",
+                        color: isToday
+                          ? "white"
+                          : hasEvent
+                            ? "white"
+                            : isSunday
+                              ? "red"
+                              : isDarkTheme
+                                ? "white"
+                                : "#000033",
+                        borderRadius: "8px",
+                        backgroundColor: hasEvent
+                          ? "green"
+                          : isToday
+                            ? "#3a65d2"
+                            : "transparent",
+                        cursor: hasEvent ? "pointer" : "default",
+                        fontWeight: hasEvent
+                          ? "bold"
+                          : isToday
+                            ? "bold"
+                            : "normal",
+                        border: hasEvent
+                          ? "1px solid green"
+                          : isToday
+                            ? "1px solid #3a65d2"
+                            : "none",
+                        flex: "1",
+                        minWidth: "0",
+                      }}
+                      onClick={() => {
+                        if (hasEvent) {
+                          setCurrentMonth(monthData.monthNumber);
+                          setCurrentYear(yr);
+                          setSelectedDate(date);
+                          setEventViewerActive(true);
+                          setCurrentView("month");
+                        }
+                      }}
+                    >
+                      {date}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </>
+      );
     };
 
     return (
@@ -1378,24 +1352,13 @@ function Calendar() {
                         className="month-card"
                         style={{
                           backgroundColor: isDarkTheme ? "black" : "white",
-                          // border: isDarkTheme
-                          //   ? "1px solid #1a1a1a"
-                          //   : "1px solid rgb(248, 247, 247)",
-
                           padding: startIndex === 0 ? "5px" : "10px",
-
                           cursor: "pointer",
                         }}
                         onClick={() => handleMonthCardClick(monthName)}
                         title={`Click to view ${monthName} ${year}`}
                       >
-                        <MonthContent
-                          monthName={monthName}
-                          monthData={monthData}
-                          weeks={weeks}
-                          year={year}
-                          isDarkTheme={isDarkTheme}
-                        />
+                        {renderMonthContent(monthName, monthData, weeks, year)}
                       </div>
                     );
                   })}
@@ -1406,430 +1369,6 @@ function Calendar() {
       </div>
     );
   }
-
-  function MonthContent({ monthName, monthData, weeks, year, isDarkTheme }) {
-    const dayAbbreviations = ["S", "M", "T", "W", "T", "F", "S"];
-
-    return (
-      <>
-        <div
-          className="month-header"
-          style={{
-            textAlign: "center",
-            marginBottom: "10px",
-          }}
-        >
-          <p
-            className="month-title"
-            style={{
-              margin: 0,
-              fontSize: "11px",
-              color: isDarkTheme ? "white" : "#000033",
-            }}
-          >
-            {monthName.substring(0, 3)}
-          </p>
-        </div>
-
-        {/* Day headers */}
-        <div
-          className="month-day-headers"
-          style={{
-            display: "flex",
-            marginBottom: "5px",
-          }}
-        >
-          {dayAbbreviations.map((day, index) => (
-            <span
-              key={index}
-              className="day-header"
-              style={{
-                fontSize: "12px",
-                textAlign: "center",
-                color: isDarkTheme ? "white" : "#000033",
-
-                flex: "1",
-                minWidth: "0",
-              }}
-            >
-              {day}
-            </span>
-          ))}
-        </div>
-
-        {/* Calendar weeks - using flexbox */}
-        <div className="month-weeks">
-          {weeks.map((week, weekIndex) => (
-            <div
-              key={weekIndex}
-              className="month-week"
-              style={{
-                display: "flex",
-                marginBottom: "2px",
-                alignItems: "center",
-              }}
-            >
-              {week.map((date, dateIndex) => {
-                // Empty cell
-                if (date === " ") {
-                  return (
-                    <span
-                      key={dateIndex}
-                      className="month-date empty"
-                      style={{
-                        fontSize: "12px",
-                        textAlign: "center",
-                        padding: "2px 0",
-                        flex: "1",
-                        minWidth: "0",
-                      }}
-                    >
-                      &nbsp;
-                    </span>
-                  );
-                }
-
-                // Check if this is today
-                const today = new Date();
-                const isToday =
-                  year === today.getFullYear() &&
-                  monthData.monthNumber === today.getMonth() &&
-                  date === today.getDate();
-
-                // Check if has event
-                const dateKey = `${year}-${monthData.monthNumber + 1}-${date}`;
-                const hasEvent = event.some(
-                  (item) => item.dateKeys && item.dateKeys.includes(dateKey),
-                );
-
-                // Check if this is a Sunday
-                const dateObj = new Date(year, monthData.monthNumber, date);
-                const isSunday = dateObj.getDay() === 0;
-
-                return (
-                  <span
-                    key={dateIndex}
-                    className={`month-date ${isToday ? "today" : ""} ${
-                      hasEvent ? "has-event" : ""
-                    }`}
-                    style={{
-                      fontSize: "12px",
-                      textAlign: "center",
-                      padding: "2px 0",
-                      color: isToday
-                        ? "green"
-                        : hasEvent
-                          ? "white"
-                          : isSunday
-                            ? "red"
-                            : isDarkTheme
-                              ? "white"
-                              : "#000033",
-                      borderRadius: "8px",
-                      backgroundColor: hasEvent
-                        ? "green"
-                        : isToday
-                          ? "gold"
-                          : "none",
-                      cursor: hasEvent ? "pointer" : "default",
-                      fontWeight: hasEvent
-                        ? "bold"
-                        : isToday
-                          ? "bold"
-                          : "normal",
-                      border: hasEvent
-                        ? "1px solid green"
-                        : date === todayDate &&
-                            monthData.monthNumber === today.getMonth() &&
-                            year === today.getFullYear()
-                          ? "1px solid gold"
-                          : "none",
-                      flex: "1",
-                      minWidth: "0",
-                    }}
-                    onClick={() => {
-                      if (hasEvent) {
-                        // Switch to month view and select this date
-                        setCurrentMonth(monthData.monthNumber);
-                        setCurrentYear(year);
-                        setSelectedDate(date);
-                        setEventViewerActive(true);
-                        setCurrentView("month");
-                      }
-                    }}
-                  >
-                    {date}
-                  </span>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  }
-
-  function getDayForDate(targetDate) {
-    const dateObj = new Date(currentYear, currentMonth, targetDate);
-    const dayOfWeek = dateObj.getDay();
-
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-    return dayNames[dayOfWeek];
-  }
-
-  function hasEventsForDate(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-    return event.some(
-      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
-    );
-  }
-
-  function closeEventViewer() {
-    setEventViewerActive(false);
-    setSelectedDate(false);
-  }
-
-  function updateEventViewerBackgroundColor(color) {
-    if (!selectedDate) return;
-
-    const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
-    const hasEventForDate = event.some(
-      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
-    );
-
-    setViewerBg(color);
-
-    if (hasEventForDate) {
-      setDateColors((prev) => ({
-        ...prev,
-        [dateKey]: color,
-      }));
-    }
-  }
-
-  function getEventColorForDate(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-
-    if (dateColors[dateKey]) {
-      return dateColors[dateKey];
-    }
-
-    const eventForDate = event.find(
-      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
-    );
-
-    return eventForDate ? "#000033" : "transparent";
-  }
-
-  function needsConnectionToRight(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    if (date === lastDayOfMonth) {
-      return false;
-    }
-
-    for (const ev of event) {
-      if (ev.dateKeys && ev.dateKeys.includes(dateKey)) {
-        const nextDate = date + 1;
-        const nextDateKey = `${currentYear}-${currentMonth + 1}-${nextDate}`;
-
-        if (ev.dateKeys.includes(nextDateKey)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  function needsConnectionToNextMonth(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    if (date !== lastDayOfMonth) {
-      return false;
-    }
-
-    for (const ev of event) {
-      if (ev.dateKeys && ev.dateKeys.includes(dateKey)) {
-        if (ev.spansMonths) {
-          const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
-          const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-          const nextMonthFirstDayKey = `${nextYear}-${nextMonth + 1}-1`;
-
-          if (ev.dateKeys.includes(nextMonthFirstDayKey)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  function getEventConnectionInfo(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-    const eventsForDate = event.filter(
-      (item) => item.dateKeys && item.dateKeys.includes(dateKey),
-    );
-
-    if (eventsForDate.length === 0) {
-      return {
-        hasEvent: false,
-        connectionClass: "",
-      };
-    }
-
-    const needsRightConnection = needsConnectionToRight(date);
-    const needsNextMonthConnection = needsConnectionToNextMonth(date);
-    let connectionClass = "";
-
-    if (needsNextMonthConnection) {
-      connectionClass = "last-day-connected";
-    } else if (needsRightConnection) {
-      connectionClass = "connected-right";
-    }
-
-    return {
-      hasEvent: true,
-      connectionClass,
-    };
-  }
-
-  function handleMood() {
-    const today = new Date();
-    const todayDate = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
-
-    const dateKey = `${todayYear}-${todayMonth + 1}-${todayDate}`;
-    const mood = window.prompt("Enter mood (emoji):");
-
-    if (mood === null || mood.trim() === "") {
-      return;
-    }
-
-    const existingMoodIndex = moods.findIndex(
-      (item) => item.dateKey === dateKey,
-    );
-
-    if (existingMoodIndex !== -1) {
-      setMoods((prev) =>
-        prev.map((m, index) =>
-          index === existingMoodIndex ? { ...m, mood: mood } : m,
-        ),
-      );
-      alert(`Mood updated for today!`);
-    } else {
-      const newMood = {
-        id: Date.now(),
-        dateKey: dateKey,
-        date: todayDate,
-        month: todayMonth,
-        year: todayYear,
-        mood: mood,
-      };
-
-      setMoods((prev) => [...prev, newMood]);
-      alert(`Mood added for today!`);
-    }
-  }
-
-  function getMoodForDate(date) {
-    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
-    const moodEntry = moods.find((item) => item.dateKey === dateKey);
-    return moodEntry ? moodEntry.mood : null;
-  }
-
-  function onEventDelete(eventId) {
-    setEventToDelete(eventId);
-    setDeleteWarningActive(true);
-  }
-
-  function cancelDelete() {
-    setDeleteWarningActive(false);
-    setEventToDelete(null);
-  }
-
-  function confirmDelete() {
-    if (!eventToDelete) {
-      setDeleteWarningActive(false);
-      return;
-    }
-
-    const eventToRemove = event.find((e) => e.id === eventToDelete);
-    const updatedEvents = event.filter((event) => event.id !== eventToDelete);
-
-    // Update state immediately
-    setEvent(updatedEvents);
-
-    // Clear colors for all dates that were part of this event
-    if (eventToRemove && eventToRemove.dateKeys) {
-      const newColors = { ...dateColors };
-      eventToRemove.dateKeys.forEach((dateKey) => {
-        delete newColors[dateKey];
-      });
-      setDateColors(newColors);
-    }
-
-    setDeleteWarningActive(false);
-    setEventToDelete(null);
-
-    // Check if there are still events for this selected date
-    if (eventToRemove && selectedDate) {
-      const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
-      const remainingEvents = updatedEvents.filter(
-        (e) => e.dateKeys && e.dateKeys.includes(dateKey),
-      );
-
-      if (remainingEvents.length === 0) {
-        setEventViewerActive(false);
-      }
-    }
-
-    alert("Event deleted successfully!");
-  }
-
-  const handleYearButtonClick = () => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    setYearViewYear(currentYear);
-    setCurrentView("year");
-  };
-
-  const handleMonthButtonClick = () => {
-    const today = new Date();
-    const targetMonth = today.getMonth();
-    const targetYear = today.getFullYear();
-    setCurrentMonth(targetMonth);
-    setCurrentYear(targetYear);
-    setCurrentView("month");
-  };
-
-  // Show loading screen while data is being loaded
-  //   if (isLoading) {
-  //     return (
-  //       <div
-  //         style={{
-  //           display: "flex",
-  //           justifyContent: "center",
-  //           alignItems: "center",
-  //           height: "100vh",
-  //           color: isDarkTheme ? "white" : "#000033",
-  //           fontSize: "18px",
-  //         }}
-  //       >
-  //         <div>Loading calendar data...</div>
-  //       </div>
-  //     );
-  //   }
 
   const wks = getWeeks();
   const date = new Date(currentYear, currentMonth);
@@ -1856,6 +1395,21 @@ function Calendar() {
           >
             <i className="fa-solid fa-calendar-days"></i>&nbsp;CALENDAR
           </h1>
+          {/* <button
+            onClick={clearAllCalendarData}
+            style={{
+              marginLeft: "10px",
+              padding: "5px 10px",
+              fontSize: "12px",
+              backgroundColor: "#ff4444",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            Clear Data
+          </button> */}
         </div>
         <LiveClock />
       </div>
@@ -1871,11 +1425,11 @@ function Calendar() {
         }}
         className="toggle-buttons-container"
       >
-        <button className="new-action-button" onClick={handleYearButtonClick}>
+        <button className="new-action-button" onClick={goToYearView}>
           Year View
         </button>
 
-        <button className="new-action-button" onClick={handleMonthButtonClick}>
+        <button className="new-action-button" onClick={goToMonthView}>
           Month View
         </button>
       </div>
@@ -2001,7 +1555,6 @@ function Calendar() {
                         };
                       }
 
-                      // Check if this is a Sunday
                       const dateObj = new Date(currentYear, currentMonth, date);
                       const isSunday = dateObj.getDay() === 0;
 
@@ -2014,20 +1567,19 @@ function Calendar() {
                           style={{
                             color:
                               date === todayDate
-                                ? "gold" // Today - gold
+                                ? "#3a65d2"
                                 : hasEvent
-                                  ? "green" // Events - green
+                                  ? "green"
                                   : isSunday
-                                    ? "red" // Sundays - red
+                                    ? "red"
                                     : isDarkTheme
-                                      ? "white" // Dark theme: white text
-                                      : "#000033", // Light theme: dark blue text
-
+                                      ? "white"
+                                      : "#000033",
                             fontSize: "16px",
                             border: hasEvent
-                              ? "1px solid green"
+                              ? "2px solid green"
                               : date === todayDate
-                                ? "1px solid gold"
+                                ? "2px solid #3a65d2"
                                 : "none",
                             borderRadius: "8px",
                             cursor: "pointer",
@@ -2065,14 +1617,7 @@ function Calendar() {
               ))}
             </div>
 
-            <EventViewer
-              event={event}
-              selectedDate={selectedDate}
-              onAddEvent={addEventForSelectedDate}
-              onAddReminder={addReminderForSelectedDate}
-              onEventDelete={onEventDelete}
-              onEventEdit={handleEditEvent}
-            />
+            <EventViewerComponent />
 
             {showEventEditor && (
               <EventEditor
@@ -2114,7 +1659,7 @@ function Calendar() {
         </div>
       )}
       {currentView === "year" && (
-        <YearView year={yearViewYear} isDarkTheme={isDarkTheme} />
+        <YearViewComponent year={yearViewYear} isDarkTheme={isDarkTheme} />
       )}
     </>
   );

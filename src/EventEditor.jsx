@@ -125,7 +125,7 @@ function EventEditor({ onClose, onSaveEvent, editingEvent }) {
             />
           </div>
 
-          <div>
+          {/* <div>
             <label htmlFor="endDate">End Date (optional):</label>
             <input
               type="number"
@@ -140,7 +140,7 @@ function EventEditor({ onClose, onSaveEvent, editingEvent }) {
             <small>
               Enter the ending day number if event spans multiple days
             </small>
-          </div>
+          </div> */}
 
           <div>
             <label htmlFor="location">Location:</label>
