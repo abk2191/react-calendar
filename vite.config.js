@@ -12,19 +12,19 @@ export default defineConfig({
       manifest: {
         name: "React Calendar",
         short_name: "React Calendar",
-        start_url: "/",
-        scope: "/",
-        display: "fullscreen", // Changed from "fullscreen" (better for PWA)
+        start_url: "/react-calendar/",
+        scope: "/react-calendar/",
+        display: "standalone", // Changed from "fullscreen" (better for PWA)
         background_color: "#000000",
         theme_color: "#000000",
         icons: [
           {
-            src: "/Gemini_Generated_Image_4nc7vo4nc7vo4nc7.png",
+            src: "/react-calendar/Gemini_Generated_Image_4nc7vo4nc7vo4nc7.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/Gemini_Generated_Image_jnf9zxjnf9zxjnf9.png",
+            src: "/react-calendar/Gemini_Generated_Image_jnf9zxjnf9zxjnf9.png",
             sizes: "512x512",
             type: "image/png",
           },
