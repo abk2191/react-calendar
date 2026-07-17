@@ -19,7 +19,7 @@ export default defineConfig({
         theme_color: "#000000",
         icons: [
           {
-            src: "/icons8-calendar-100.png",
+            src: "/Gemini_Generated_Image_4nc7vo4nc7vo4nc7.png",
             sizes: "192x192",
             type: "image/png",
           },
