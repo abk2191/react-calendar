@@ -470,6 +470,9 @@ function Calendar() {
   }
 
   function goToMonthView() {
+    const today = new Date();
+    setCurrentMonth(today.getMonth());
+    setCurrentYear(today.getFullYear());
     setCurrentView("month");
   }
 
@@ -896,7 +899,7 @@ function Calendar() {
           >
             {day}, {getOrdinalSuffix(selectedDate)}.
           </h3>
-          <button className="cls-nt-btn" onClick={closeEventViewer}>
+          <button className="cls-evnt-vwr-btn" onClick={closeEventViewer}>
             <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -1200,7 +1203,7 @@ function Calendar() {
                         color: isToday
                           ? "white"
                           : hasEvent
-                            ? "white"
+                            ? "#000033"
                             : isSunday
                               ? "red"
                               : isDarkTheme
@@ -1208,20 +1211,16 @@ function Calendar() {
                                 : "#000033",
                         borderRadius: "8px",
                         backgroundColor: hasEvent
-                          ? "green"
+                          ? "transparent"
                           : isToday
-                            ? "#3a65d2"
+                            ? "#000033"
                             : "transparent",
                         cursor: hasEvent ? "pointer" : "default",
-                        fontWeight: hasEvent
-                          ? "bold"
-                          : isToday
-                            ? "bold"
-                            : "normal",
+                        fontWeight: isToday ? "bold" : "normal",
                         border: hasEvent
-                          ? "1px solid green"
+                          ? "1.5px solid #000033"
                           : isToday
-                            ? "1px solid #3a65d2"
+                            ? "1px solid #000033"
                             : "none",
                         flex: "1",
                         minWidth: "0",
@@ -1384,7 +1383,7 @@ function Calendar() {
 
   return (
     <>
-      <div className="time" style={{ marginTop: "70px" }}>
+      <div className="time" style={{ marginTop: "30px", textAlign: "center" }}>
         <div>
           <h1
             style={{
@@ -1395,6 +1394,9 @@ function Calendar() {
           >
             <i className="fa-solid fa-calendar-days"></i>&nbsp;CALENDAR
           </h1>
+          <p style={{ fontSize: "10px" }}>
+            Created by <strong>ABHISHEK KABI</strong>
+          </p>
           {/* <button
             onClick={clearAllCalendarData}
             style={{
@@ -1567,9 +1569,9 @@ function Calendar() {
                           style={{
                             color:
                               date === todayDate
-                                ? "#3a65d2"
+                                ? "#000033"
                                 : hasEvent
-                                  ? "green"
+                                  ? "#000033"
                                   : isSunday
                                     ? "red"
                                     : isDarkTheme
@@ -1577,9 +1579,9 @@ function Calendar() {
                                       : "#000033",
                             fontSize: "16px",
                             border: hasEvent
-                              ? "2px solid green"
+                              ? "2px solid #000033"
                               : date === todayDate
-                                ? "2px solid #3a65d2"
+                                ? "2px solid #000033"
                                 : "none",
                             borderRadius: "8px",
                             cursor: "pointer",

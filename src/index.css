@@ -1697,6 +1697,13 @@ html {
   z-index: 15001;
 }
 
+.cls-evnt-vwr-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+}
+
 /* Add floating animation */
 
 /* Hover effect */

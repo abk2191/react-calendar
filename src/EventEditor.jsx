@@ -83,10 +83,7 @@ function EventEditor({ onClose, onSaveEvent, editingEvent }) {
           ×
         </button>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ color: "white", width: "100%", marginTop: "140px" }}
-        >
+        <form onSubmit={handleSubmit} style={{ color: "white", width: "100%" }}>
           <div>
             <label htmlFor="name">Event Name:</label>
             <input
